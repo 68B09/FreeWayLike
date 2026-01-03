@@ -168,7 +168,7 @@ function draw() {
 	ctx.fillStyle = "white";
 	ctx.font = "16px sans-serif";
 	ctx.textBaseline = "top";
-	ctx.fillText('"FreeWayLike" version 1.00 (c) 2026 by zzo', 8, 8);
+	ctx.fillText('"FreeWayLike" version 1.00 SpecialThanks FKS氏＆Yoshihiro Sugahara氏.', 8, 8);
 	ctx.fillText("フリーウェイライクへ････", 8, 32);
 
 	const cameraY = cameraYBase + roadList[0].Y;
