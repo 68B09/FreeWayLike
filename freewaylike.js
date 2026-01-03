@@ -176,10 +176,11 @@ function draw() {
 	// BG
 	bgOffsetX -= roadList[0].Curve;
 	let bgX = bgOffsetX % bgCanvas.width;
+	if (bgX > 0) bgX -= bgCanvas.width;
 	bgOffsetY = (cameraY - cameraYBase) / UPDOWNSTEP;
 
 	ctx.drawImage(bgCanvas, bgX, bgOffsetY);
-	ctx.drawImage(bgCanvas, bgX + bgCanvas.width, bgOffsetY);
+	if (bgX != 0) ctx.drawImage(bgCanvas, bgX + bgCanvas.width, bgOffsetY);
 
 	let minY = ScreenH();
 	let sx = 0, cx = 0;
