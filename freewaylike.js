@@ -1,3 +1,8 @@
+/*
+[License and COPYRIGHT]
+FreeWayLike version 1.00.
+著作権はFKS氏およびYoshihiro Sugahara氏に帰属します。
+*/
 const ROAD_NUM = 100;
 const VIEW_NUM = 100;
 
@@ -215,3 +220,4 @@ function draw() {
 }
 
 setInterval(draw, 50);
+
