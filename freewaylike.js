@@ -1,24 +1,27 @@
+"use strict";
+
 /*
 [License and COPYRIGHT]
 FreeWayLike version 1.00.
 著作権はFKS氏およびYoshihiro Sugahara氏に帰属します。
 */
-const ROAD_NUM = 100;
-const VIEW_NUM = 100;
+const IntervalMilliTime = 1000 / 20;	// 描画間隔（ミリ秒）
+const VIEW_NUM = 100;					// 表示道路数
+const roadList = [];					// 道路データリスト
 
 const SCREEN_Z = 1.0;
-let road_W = 1200;
+const road_W = 1200;
 
 const UPDOWNMIN = 0;
 const UPDOWNMAX = 300;
 const UPDOWNSTEP = 20;
 
-let cameraYBase = 500;
-let cameraX = 0;
-let cameraZ = -2;
+const cameraYBase = 500;
+const cameraX = 0;
+const cameraZ = -2;
 
-let gaitouH = 800;
-let roadStep = 0.25;
+const gaitouH = 800;		// 街灯の高さ
+const roadStep = 0.5;
 
 let bgOffsetX = 0;
 let bgOffsetY = 0;
@@ -32,7 +35,6 @@ function resize() {
 	makeBG();
 }
 window.addEventListener("resize", resize);
-//resize();
 
 const ScreenW = () => canvas.width;
 const ScreenH = () => canvas.height;
@@ -58,11 +60,6 @@ const RoadTypes = {
 let MakeRoadUpdown = 0;
 let MakeRoadUpdownStep = 0;
 let MakeRoadType = RoadTypes.STRAIGHT;
-let MakeRoadCount = 0;
-let MakeRoadCurve = 0;
-
-const roadList = [];
-const rnd = Math.random;
 
 /* ===== Background ===== */
 
@@ -105,8 +102,6 @@ function makeBG() {
 
 function setNextRoad(road) {
 	road.Y = MakeRoadUpdown;
-	road.Curve = (MakeRoadType === RoadTypes.CURVE) ? MakeRoadCurve : 0;
-
 	if (MakeRoadUpdownStep !== 0) {
 		MakeRoadUpdown += MakeRoadUpdownStep;
 		if (MakeRoadUpdown > UPDOWNMAX || MakeRoadUpdown < UPDOWNMIN) {
@@ -114,49 +109,143 @@ function setNextRoad(road) {
 			MakeRoadUpdownStep = 0;
 		}
 	}
+}
 
-	MakeRoadCount--;
-	if (MakeRoadCount <= 0) {
-		const next =
-			MakeRoadType === RoadTypes.STRAIGHT
-				? RoadTypes.CURVE
-				: RoadTypes.STRAIGHT;
-		setNextRoadParameter(next);
+function setNextRoadParameter() {
+	if (Math.random() < 0.4) {
+		MakeRoadUpdownStep = Math.random() * 10;
+		if (MakeRoadUpdown <= UPDOWNMIN) {
+		} else if (MakeRoadUpdown >= UPDOWNMAX) {
+			MakeRoadUpdownStep *= -1;
+		} else {
+			if (Math.random() < 0.5) MakeRoadUpdownStep *= -1;
+		}
 	}
 }
 
-function setNextRoadParameter(type) {
-	const length = 10 + Math.floor(Math.random() * 30);
+let isInitial = true;
+function setNextRoadDatas() {
+	while (roadList.length < VIEW_NUM) {
+		//console.log("setNextRoadDatas:", roadList.length);
+		let nextTargetTbl;
+		if (isInitial) {
+			nextTargetTbl = nextTargetTbl = makeRoadStraightTable(VIEW_NUM * 2);
+		} else {
+			const rndVal = Math.random();
+			if (MakeRoadType === RoadTypes.STRAIGHT) {
+				// カーブ
+				MakeRoadType = RoadTypes.CURVE;
+				if (rndVal < 0.6) {
+					nextTargetTbl = makeRoadCurveTable(25 * 5, 0.5, 0.25, Math.random() < 0.8);
+				} else if (rndVal < 0.9) {
+					nextTargetTbl = makeRoadCurveTable(25 * 5, 2.0, 0.25, Math.random() < 0.8);
+				} else {
+					nextTargetTbl = makeRoadCurveTable(25 * 5, 3.0, 0.25, Math.random() < 0.8);
+				}
+			} else {
+				// 直線
+				MakeRoadType = RoadTypes.STRAIGHT;
+				if (rndVal < 0.2) {
+					nextTargetTbl = makeRoadStraightTable(25 * 3);
+				} else if (rndVal < 0.9) {
+					nextTargetTbl = makeRoadStraightTable(25 * 4);
+				} else {
+					nextTargetTbl = makeRoadStraightTable(25 * 6);
+				}
+			}
+		}
 
-	MakeRoadType = type;
-	MakeRoadCount = length;
-	MakeRoadCurve = 0;
-
-	if (type === RoadTypes.CURVE) {
-		MakeRoadCurve = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2));
+		for (let i = 0; i < nextTargetTbl.length; i++) {
+			let index = roadList.length;
+			let visible = index % 5 === 0;
+			let gaitou = visible && (index % 25 === 0);
+			const r = nextTargetTbl[i];
+			r.Visible = visible;
+			r.HasGaitou = gaitou;
+			setNextRoad(r);
+			roadList.push(r);
+		}
+		setNextRoadParameter();
 	}
 
-	if (Math.random() < 0.4) {
-		MakeRoadUpdownStep = Math.random() * 20;
-		if (Math.random() < 0.5) MakeRoadUpdownStep *= -1;
+	isInitial = false;
+}
+
+// 直線作成
+function makeRoadStraightTable(roadLength) {
+	const curveTbl = [];
+	for (let i = 0; i < roadLength; i++) {
+		curveTbl.push(new Road());
 	}
+	return curveTbl;
+}
+
+// カーブ作成
+let rightCurve = true;
+function makeRoadCurveTable(roadLength, maxCV, counterStep, isReverse) {
+	const curveTbl = [];
+	let counter = 0.0;
+	for (let i = 0; i < roadLength; i++) {
+		let r = new Road();
+		r.Curve = maxCV;
+		curveTbl.push(r);
+	}
+
+	let halfLength = curveTbl.length / 2;
+	let bottomIndex = curveTbl.length - 1;
+
+	for (let i = 0; i < halfLength; i++) {
+		let cv = counter * counter;
+		counter += counterStep;
+		if (cv > maxCV) {
+			cv = maxCV;
+		}
+		curveTbl[i].Curve = cv;
+		curveTbl[bottomIndex - i].Curve = cv;
+		if (cv >= maxCV) {
+			break;
+		}
+	}
+
+	// 左右反転
+	if (isReverse) {
+		rightCurve = !rightCurve;
+	}
+	if (rightCurve) {
+		for (let r of curveTbl) {
+			r.Curve = 0 - r.Curve;
+		}
+	}
+
+	return curveTbl;
 }
 
 /* ===== Init ===== */
 
 function initRoad() {
-	for (let i = 0; i < ROAD_NUM; i++) {
-		const r = new Road();
-		if (i % 5 === 0) {
-			r.Visible = true;
-			if (i % 25 === 0) r.HasGaitou = true;
-		}
-		roadList.push(r);
-	}
+	// 初期データセット
+	setNextRoadDatas();
+}
+
+/* ===== shooting star ===== */
+let nextStarRemain;
+let starX;
+let starY;
+let starDX = 1;
+let starDY;
+let starXOffset = 0;
+
+function initStar() {
+	nextStarRemain = ((Math.random() * 4 + 1) * 60 * 1000) / IntervalMilliTime;
+	starX = 0;
+	starY = 0;
+	starDX *= -1;
+	starDY = 1;
 }
 
 initRoad();
 makeBG();
+initStar();
 resize();
 
 /* ===== Draw ===== */
@@ -173,20 +262,38 @@ function draw() {
 	ctx.fillStyle = "white";
 	ctx.font = "16px sans-serif";
 	ctx.textBaseline = "top";
-	ctx.fillText('"FreeWayLike" version 1.00 SpecialThanks FKS氏＆Yoshihiro Sugahara氏.', 8, 8);
+	ctx.fillText('"FreeWayLike" version 1.10 SpecialThanks FKS氏＆Yoshihiro Sugahara氏.', 8, 8);
 	ctx.fillText("フリーウェイライクへ････", 8, 32);
 
 	const cameraY = cameraYBase + roadList[0].Y;
 
-	// BG
-	bgOffsetX -= roadList[0].Curve;
-	let bgX = bgOffsetX % bgCanvas.width;
+	// BG描画
+	bgOffsetX = (bgOffsetX - roadList[0].Curve) % bgCanvas.width;
+	let bgX = bgOffsetX;
 	if (bgX > 0) bgX -= bgCanvas.width;
 	bgOffsetY = (cameraY - cameraYBase) / UPDOWNSTEP;
 
 	ctx.drawImage(bgCanvas, bgX, bgOffsetY);
 	if (bgX != 0) ctx.drawImage(bgCanvas, bgX + bgCanvas.width, bgOffsetY);
 
+	// 流れ星描画
+	if (nextStarRemain <= 0) {
+		if (nextStarRemain === 0) {
+			starX = ScreenWHalf();
+			starXOffset = bgOffsetX;
+		}
+		ctx.fillStyle = "#FF00FF";
+		ctx.fillRect(starX + (bgOffsetX - starXOffset), starY, 1, 1);
+		starX += starDX;
+		starY += starDY;
+		if (starY >= (ScreenHHalf() + bgOffsetY - 20)) {
+			// 流れ星終了
+			initStar();
+		}
+	}
+	nextStarRemain--;
+
+	// 道路描画
 	let minY = ScreenH();
 	let sx = 0, cx = 0;
 
@@ -215,9 +322,8 @@ function draw() {
 	}
 
 	const top = roadList.shift();
-	setNextRoad(top);
-	roadList.push(top);
+	//console.log("cx,sx,RoadCurve:", cx.toFixed(4) + "," + sx.toFixed(4) + "," + top.Curve.toFixed(4) + " Y:" + top.Y.toFixed(4));
+	setNextRoadDatas();
 }
 
-setInterval(draw, 50);
-
+setInterval(draw, IntervalMilliTime);

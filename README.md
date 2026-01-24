@@ -10,4 +10,6 @@
 デモ  
 https://68b09.github.io/FreeWayLike/
 ***
+2026.1.24 68B09 カーブを滑らかに。  
+  
 2026.1.3 68B09 1st release.  
